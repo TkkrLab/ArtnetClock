@@ -210,7 +210,7 @@ def pixel(screen, color, x,y):
 
 def getbuienradar():
     global buienradar_data
-    with urllib.request.urlopen('https://gpsgadget.buienradar.nl/data/raintext?lat=52.28&lon=5.53') as response:
+    with urllib.request.urlopen('https://gpsgadget.buienradar.nl/data/raintext?lat=52.22&lon=6.87') as response:
         web_data = response.read()
     buienradar_data =  web_data.decode('utf-8').splitlines()
     print("Update buienradar.")
