@@ -6,18 +6,22 @@ import subprocess, shlex
 import os
 import urllib.request
 from importlib import util
-
-#pip3 install paho-mqtt
 import paho.mqtt.client as mqtt
 import random
 
-#check if pygame is available/installed
 if util.find_spec('pygame'):
+    #on testsystem with pygame
     import pygame
     from pygame.locals import *
     mode = "pygame"
+    mqtt_server = 'localhost'
+    #mqtt_server = 'server'
 else:
+    #on server
     mode = "artnet"
+    mqtt_server = 'server'
+
+
 
 class Artnet:
         def __init__(self, ip='candymachine.tkkrlab', port=6454):
@@ -78,17 +82,26 @@ class Artnet:
                 #return (protverhi,protverlo,sequence,physical,subuni,net,lengthhi,length,dmx)
                 return dmx
 
-#define callback
 def on_message(client, userdata, message):
-    global color_werkplaats
-    print("received message =",str(message.payload.decode("utf-8")))
+    global color_werkplaats, statusSpace
+    #print("received topic =", str(message.topic))
+    #print("received message =", str(message.payload.decode("utf-8")))
 
-    if message.payload.decode("utf-8") == '1':
-        color_werkplaats = (0,255,0)
-        print("werkplaats is OPEN")
-    if message.payload.decode("utf-8") == '0':
-        color_werkplaats = (255,0,0)
-        print("werkplaats is CLOSED")
+    if message.topic == 'tkkrlab/werkplaats/state':
+        if message.payload.decode("utf-8") == '1':
+            color_werkplaats = (0, 255, 0)
+            print("werkplaats is OPEN")
+        if message.payload.decode("utf-8") == '0':
+            color_werkplaats = (255, 0, 0)
+            print("werkplaats is CLOSED")
+
+    if (message.topic == 'tkkrlab/spacestate' or message.topic == 'tkkrlab/spacestateTest'):
+        if message.payload.decode("utf-8") == '1':
+            statusSpace = True
+            print("Space is OPEN")
+        if message.payload.decode("utf-8") == '0':
+            statusSpace = False
+            print("Space is CLOSED")
 
 numbers={
 '1': [
@@ -168,6 +181,13 @@ numbers={
         [0,0,0],
         [0,1,0],
         [0,0,0]
+    ],
+' ':   [
+        [0,0,0],
+        [0,0,0],
+        [0,0,0],
+        [0,0,0],
+        [0,0,0]
     ]
 }
 
@@ -209,6 +229,7 @@ def pixel(screen, color, x,y):
     pygame.draw.rect(screen, color , pygame.Rect(x*scale, y*scale, scale, scale))
 
 def getbuienradar():
+    print("Ophalen buienradar...")
     global buienradar_data
     with urllib.request.urlopen('https://gpsgadget.buienradar.nl/data/raintext?lat=52.22&lon=6.87') as response:
         web_data = response.read()
@@ -248,12 +269,14 @@ color_background = (0,0,0)
 color_pixel = (0,158,0)
 color_werkplaats = (0,0,255)
 
+statusSpace = None
+
 ## Set up MQTT stuff
-## http://www.steves-internet-guide.com/python-mqtt-publish-subscribe/
-client = mqtt.Client("ArtnetClock") 
-client.on_message = on_message ## Bind function to callback
-client.connect("server",1883)
-client.subscribe("tkkrlab/werkplaats/state")
+client = mqtt.Client()
+client.on_message = on_message  # Bind function to callback
+client.connect(mqtt_server, 1883)
+client.subscribe([("tkkrlab/werkplaats/state", 0), ("tkkrlab/spacestate",0)])
+client.loop_start()
 
 if mode == "pygame":
     pygame.init()
@@ -263,7 +286,7 @@ if mode == "pygame":
 getbuienradar()
 
 while True:
-    
+
     if mode == "pygame":
         for event in pygame.event.get():
             if event.type==QUIT:
@@ -271,26 +294,33 @@ while True:
                 sys.exit()
         screen.fill(color_background)
 
-    client.loop_start() #start loop to process received messages
+    if statusSpace == False:
+        #space close, draw empty clock
+        drawNumber(0, 2, ' ')
+        drawNumber(4, 2, ' ')
+        drawNumber(7, 2, ' ')
+        drawNumber(10, 2, ' ')
+        drawNumber(14, 2, ' ')
 
-    timenow = time.strftime("%H:%M:%S")
-
-    # update once every 10 min
-    if (timenow[4]=='0' and timenow[6:8] =='00'):
-        #if (timenow[6:8] =='00'):
-        getbuienradar()
-
-    draw_buienradar()
-
-    drawNumber(0, 2, timenow[0])
-    drawNumber(4, 2, timenow[1])
-    if (int(timenow[7]) % 2) == 0:
-        drawNumber(7, 2, ':')
     else:
-        drawNumber(7, 2, ':',(0,80,0))
-    drawNumber(10, 2, timenow[3])
-    drawNumber(14, 2, timenow[4])
+        timenow = time.strftime("%H:%M:%S")
 
+        # update once every 5 min
+        if (timenow[4] in '05' and timenow[6:8] == '00'):
+            getbuienradar()
+
+        draw_buienradar()
+
+        drawNumber(0, 2, timenow[0])
+        drawNumber(4, 2, timenow[1])
+        if (int(timenow[7]) % 2) == 0:
+            drawNumber(7, 2, ':')
+        else:
+            drawNumber(7, 2, ':',(0,80,0))
+        drawNumber(10, 2, timenow[3])
+        drawNumber(14, 2, timenow[4])
+
+    #draw werkplaats status
     if mode == "pygame":
         pixel(screen, color_werkplaats , 16,9)
         pygame.display.update()
