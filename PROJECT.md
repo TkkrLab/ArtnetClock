@@ -7,7 +7,7 @@ thumbnail: "https://raw.githubusercontent.com/TkkrLab/ArtnetClock/master/ArtnetC
 # ArtnetClock
 Clock controlled by artnet packets
 
-Python script lives on our tkkrlab server. Clock is updated every minuten, buienradar data every 10 mins.
+Python script lives on our tkkrlab server. Clock is updated every minuten, buienradar data every 5 mins.
 
 Status of workplace (updated via MQTT)
 
