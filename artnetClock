@@ -14,8 +14,8 @@ if util.find_spec('pygame'):
     import pygame
     from pygame.locals import *
     mode = "pygame"
-    mqtt_server = 'localhost'
-    #mqtt_server = 'server'
+    #mqtt_server = 'localhost'
+    mqtt_server = 'server'
 else:
     #on server
     mode = "artnet"
@@ -241,24 +241,28 @@ def getbuienradar():
 
 
 def draw_buienradar():
+    print('----------------')
     global buienradar_data
-    color_buienradar = (0,0,255)
+    color_buienradar = (0,0,128)
+
+    print(buienradar_data)
 
     if buienradar_data:
-        for y in range(7,10):
-            for line in buienradar_data[:3]: #only first 3 lines = 15min 
-                bar = int(line[:3])/15 #max value from buienradar = 255, scale to 17 pixels 
-        
-                #draw bar
-                for x in range(0,17):
-                    if mode == "artnet":
-                        if x<bar:
-                            p_set(x,y,color_buienradar[0],color_buienradar[1],color_buienradar[2])
-                        else:
-                            p_set(x,y,0,0,0) #Set black pixels
+        y = 7
+        for line in buienradar_data[:3]: #only first 3 lines = 15min 
+            # max value from buienradar = 255, scale to 17 pixels
+            bar = int(int(line[:3])/15)
+
+            for x in range(0,17):
+                if mode == "artnet":
+                    if x<bar:
+                        p_set(x,y,color_buienradar[0],color_buienradar[1],color_buienradar[2])
                     else:
-                        if x<bar:
-                            pixel(screen, color_buienradar , x,y)
+                        p_set(x,y,0,0,0) #Set black pixels
+                else:
+                    if x<bar:
+                        pixel(screen, color_buienradar , x,y)
+            y +=1
     else:
         #draw buienradar error
         if mode == "pygame":
