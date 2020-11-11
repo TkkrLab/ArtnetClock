@@ -21,8 +21,6 @@ else:
     mode = "artnet"
     mqtt_server = 'server'
 
-
-
 class Artnet:
         def __init__(self, ip='candymachine.tkkrlab', port=6454):
                 self.sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
@@ -95,13 +93,14 @@ def on_message(client, userdata, message):
             color_werkplaats = (255, 0, 0)
             print("werkplaats is CLOSED")
 
-    if (message.topic == 'tkkrlab/spacestate' or message.topic == 'tkkrlab/spacestateTest'):
+    if (message.topic == 'tkkrlab/spacestate'):
         if message.payload.decode("utf-8") == '1':
             statusSpace = True
             print("Space is OPEN")
         if message.payload.decode("utf-8") == '0':
             statusSpace = False
             print("Space is CLOSED")
+    #statusSpace = True
 
 numbers={
 '1': [
@@ -234,6 +233,8 @@ def getbuienradar():
         with urllib.request.urlopen('https://gpsgadget.buienradar.nl/data/raintext?lat=52.22&lon=6.87') as response:
             web_data = response.read()
         buienradar_data = web_data.decode('utf-8').splitlines()
+        #buienradar_data = ["050 | 17: 45","060 | 17: 50","070 | 17: 55","080 | 18: 00","090 | 18: 05","100 | 18: 10","110 | 18: 15","120 | 18: 20"]
+        print('Buien : ', buienradar_data[:3])
     except Exception as e:
         print('Error getting buienradar : ', e.__class__)
         buienradar_data = None
@@ -241,17 +242,25 @@ def getbuienradar():
 
 
 def draw_buienradar():
-    print('----------------')
     global buienradar_data
     color_buienradar = (0,0,128)
 
-    print(buienradar_data)
-
     if buienradar_data:
         y = 7
-        for line in buienradar_data[:3]: #only first 3 lines = 15min 
-            # max value from buienradar = 255, scale to 17 pixels
-            bar = int(int(line[:3])/15)
+        #for line in buienradar_data[:3]:  # only first 3 lines = 15min
+            #bar = int(int(line[:3])/15)
+
+        # max value from buienradar = 255, scale to 17 pixels
+        for line in range(0,6,2):  # only first 3 lines = 15min
+
+            bar = int(
+                (int(buienradar_data[line][0:3])+int(buienradar_data[line+1][0:3])/2)/15)
+        
+            #print("Line ",line)
+            #print("Regel 1",buienradar_data[line][0:3])
+            #print("  Int", int(buienradar_data[line][0:3]))
+            #print("Regel 2",buienradar_data[line+1][0:3])
+            #print("Bar ",bar)
 
             for x in range(0,17):
                 if mode == "artnet":
@@ -275,7 +284,7 @@ def draw_buienradar():
 
 print("Starting artnet clock")
 
-p_artnet = Artnet('10.42.4.155');
+p_artnet = Artnet('10.42.4.155')
 p_buffer = [0,0,0]*17*10
 
 # for display in pygame
@@ -321,8 +330,9 @@ while True:
     else:
         timenow = time.strftime("%H:%M:%S")
 
-        # update once every 5 min
-        if (timenow[4] in '05' and timenow[6:8] == '00'):
+        # update once every 10 min
+        #if (timenow[4] in '05' and timenow[6:8] == '00'):
+        if (timenow[6:8] == '00'):
             getbuienradar()
 
         draw_buienradar()
@@ -345,4 +355,3 @@ while True:
         send()
 
     time.sleep(1)
-
