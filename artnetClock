@@ -228,50 +228,49 @@ def pixel(screen, color, x,y):
     pygame.draw.rect(screen, color , pygame.Rect(x*scale, y*scale, scale, scale))
 
 def getbuienradar():
-    global buienradar_data
+    print("Update buienradar ",time.strftime("%H:%M:%S"))
+    global buienradar_bar
+    buienradar_bar = []
+
     try:
         with urllib.request.urlopen('https://gpsgadget.buienradar.nl/data/raintext?lat=52.22&lon=6.87') as response:
             web_data = response.read()
         buienradar_data = web_data.decode('utf-8').splitlines()
-        #buienradar_data = ["050 | 17: 45","060 | 17: 50","070 | 17: 55","080 | 18: 00","090 | 18: 05","100 | 18: 10","110 | 18: 15","120 | 18: 20"]
-        print('Buien : ', buienradar_data[:3])
-    except Exception as e:
-        print('Error getting buienradar : ', e.__class__)
-        buienradar_data = None
-    print("Update buienradar.")
 
+        if buienradar_data:
+            bar_line=0
+            for line in range(0,6,2): #avage first 6 lines to 3 lines
+                buienradar_bar.append(int((int(buienradar_data[line][0:3])+int(buienradar_data[line+1][0:3])/2)/15))
+                bar_line+=1
+        else:
+            print("No data from buienradar")
+
+
+    except Exception as e:
+        print('Error getting buienradar : ', e)
+        buienradar_bar = None
+
+def clear_buienradar():
+    for y in range(7,10): ## lines
+        for x in range(0,17):
+            p_set(x,y,0,0,0)
 
 def draw_buienradar():
-    global buienradar_data
+    global buienradar_bar
+
     color_buienradar = (0,0,128)
 
-    if buienradar_data:
-        y = 7
-        #for line in buienradar_data[:3]:  # only first 3 lines = 15min
-            #bar = int(int(line[:3])/15)
-
-        # max value from buienradar = 255, scale to 17 pixels
-        for line in range(0,6,2):  # only first 3 lines = 15min
-
-            bar = int(
-                (int(buienradar_data[line][0:3])+int(buienradar_data[line+1][0:3])/2)/15)
-        
-            #print("Line ",line)
-            #print("Regel 1",buienradar_data[line][0:3])
-            #print("  Int", int(buienradar_data[line][0:3]))
-            #print("Regel 2",buienradar_data[line+1][0:3])
-            #print("Bar ",bar)
-
+    if buienradar_bar:
+        for y in range(7,10):
             for x in range(0,17):
                 if mode == "artnet":
-                    if x<bar:
+                    if x<buienradar_bar[y-7]:
                         p_set(x,y,color_buienradar[0],color_buienradar[1],color_buienradar[2])
                     else:
                         p_set(x,y,0,0,0) #Set black pixels
                 else:
-                    if x<bar:
+                    if x<buienradar_bar[y-7]:
                         pixel(screen, color_buienradar , x,y)
-            y +=1
     else:
         #draw buienradar error
         if mode == "pygame":
@@ -284,7 +283,6 @@ def draw_buienradar():
 
 print("Starting artnet clock")
 
-#p_artnet = Artnet('10.42.4.155')
 p_artnet = Artnet('Arduino-42')
 p_buffer = [0,0,0]*17*10
 
@@ -295,7 +293,7 @@ color_pixel = (0,158,0)
 color_werkplaats = (0,0,255)
 
 statusSpace = None
-buienradar_data = None
+buienradar_bar = None
 
 ## Set up MQTT stuff
 client = mqtt.Client()
@@ -327,13 +325,15 @@ while True:
         drawNumber(7, 2, ' ')
         drawNumber(10, 2, ' ')
         drawNumber(14, 2, ' ')
+        clear_buienradar()
+        time.sleep(10)
 
     else:
         timenow = time.strftime("%H:%M:%S")
 
         # update once every 10 min
         #if (timenow[4] in '05' and timenow[6:8] == '00'):
-        if (timenow[6:8] == '00'):
+        if (timenow[4] == '0' and timenow[6:8] == '00'):
             getbuienradar()
 
         draw_buienradar()
