@@ -283,8 +283,9 @@ def draw_buienradar():
 
 print("Starting artnet clock")
 
-p_artnet = Artnet('Arduino-42')
-p_buffer = [0,0,0]*17*10
+#p_artnet = Artnet('Arduino-42')
+p_artnet = Artnet('10.42.1.8')
+p_buffer = [0, 0, 0]*17*10
 
 # for display in pygame
 scale = 30 # enlarge pygame window to see pixels
